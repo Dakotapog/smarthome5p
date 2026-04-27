@@ -52,25 +52,46 @@ app.use((err, req, res, next) => {
 });
 
 async function initDB() {
+  let client;
   try {
-    const client = await pool.connect();
-    // Verificar si las tablas ya existen
+    console.log('Conectando a PostgreSQL...');
+    console.log('DATABASE_URL definida:', !!process.env.DATABASE_URL);
+    client = await pool.connect();
+    console.log('Conexión exitosa a PostgreSQL.');
+
     const check = await client.query(
-      `SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_name='users'`
+      `SELECT COUNT(*) FROM information_schema.tables
+       WHERE table_schema='public' AND table_name='users'`
     );
     if (parseInt(check.rows[0].count) === 0) {
-      console.log('Inicializando base de datos...');
-      const schema = fs.readFileSync(path.join(__dirname, 'src/db/schema.sql'), 'utf8');
-      await client.query(schema);
-      const seed = fs.readFileSync(path.join(__dirname, 'src/db/seed.sql'), 'utf8');
-      await client.query(seed);
+      console.log('Tablas no encontradas. Ejecutando schema.sql...');
+      const schemaPath = path.join(__dirname, 'src/db/schema.sql');
+      const schema = fs.readFileSync(schemaPath, 'utf8');
+      // Ejecutar cada sentencia por separado para mejor manejo de errores
+      const statements = schema.split(';').map(s => s.trim()).filter(s => s.length > 0);
+      for (const stmt of statements) {
+        await client.query(stmt);
+      }
+      console.log('Schema creado. Ejecutando seed.sql...');
+      const seedPath = path.join(__dirname, 'src/db/seed.sql');
+      const seed = fs.readFileSync(seedPath, 'utf8');
+      const seedStatements = seed.split(';').map(s => s.trim()).filter(s => s.length > 0);
+      for (const stmt of seedStatements) {
+        await client.query(stmt);
+      }
       console.log('Base de datos inicializada con datos demo.');
     } else {
-      console.log('Base de datos ya inicializada.');
+      console.log('Base de datos ya inicializada. Tablas existentes.');
     }
-    client.release();
   } catch (err) {
-    console.error('Error inicializando BD:', err.message);
+    console.error('=== ERROR INICIALIZANDO BD ===');
+    console.error('Mensaje:', err.message);
+    console.error('Código:', err.code);
+    console.error('Detalle:', err.detail);
+    console.error('Stack:', err.stack);
+    console.error('==============================');
+  } finally {
+    if (client) client.release();
   }
 }
 

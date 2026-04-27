@@ -2,8 +2,7 @@
 -- PGA-MER-001 v1.0 — Basado en diccionario_datos.md (Entrega 2)
 -- Atomicidad: nombres exactos del Diccionario de Datos
 
--- Extensión para UUID
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+-- gen_random_uuid() está disponible nativamente en PostgreSQL 13+
 
 -- 1. USERS
 CREATE TABLE IF NOT EXISTS users (
